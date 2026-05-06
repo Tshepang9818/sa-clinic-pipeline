@@ -84,15 +84,20 @@ jobs:
           sudo apt-get install -y docker-compose-plugin
 
       - name: Create .env file
+        working-directory: ${{ github.workspace }}
         run: |
-          echo "POSTGRES_USER=clinicuser" > .env
-          echo "POSTGRES_PASSWORD=clinicpass123" >> .env
-          echo "POSTGRES_DB=clinicdb" >> .env
-          echo "DATABASE_URL=postgresql://clinicuser:clinicpass123@postgres/clinicdb" >> .env
-          echo "REDIS_URL=redis://redis:6379" >> .env
-          cat .env
+          echo "POSTGRES_USER=clinicuser" > ${{ github.workspace }}/.env
+          echo "POSTGRES_PASSWORD=clinicpass123" >> ${{ github.workspace }}/.env
+          echo "POSTGRES_DB=clinicdb" >> ${{ github.workspace }}/.env
+          echo "DATABASE_URL=postgresql://clinicuser:clinicpass123@postgres/clinicdb" >> ${{ github.workspace }}/.env
+          echo "REDIS_URL=redis://redis:6379" >> ${{ github.workspace }}/.env
+          echo "--- .env contents ---"
+          cat ${{ github.workspace }}/.env
+          echo "--- .env location ---"
+          ls -la ${{ github.workspace }}
 
       - name: Start staging environment
+        working-directory: ${{ github.workspace }}
         run: |
           docker compose --profile staging up -d --build
           echo "Staging started on port 8011"
@@ -123,16 +128,20 @@ jobs:
           sudo apt-get install -y docker-compose-plugin
 
       - name: Create .env file
+        working-directory: ${{ github.workspace }}
         run: |
-          cat > .env << 'EOF'
-          POSTGRES_USER=clinicuser
-          POSTGRES_PASSWORD=clinicpass123
-          POSTGRES_DB=clinicdb
-          DATABASE_URL=postgresql://clinicuser:clinicpass123@postgres/clinicdb
-          REDIS_URL=redis://redis:6379
-          EOF
+          echo "POSTGRES_USER=clinicuser" > ${{ github.workspace }}/.env
+          echo "POSTGRES_PASSWORD=clinicpass123" >> ${{ github.workspace }}/.env
+          echo "POSTGRES_DB=clinicdb" >> ${{ github.workspace }}/.env
+          echo "DATABASE_URL=postgresql://clinicuser:clinicpass123@postgres/clinicdb" >> ${{ github.workspace }}/.env
+          echo "REDIS_URL=redis://redis:6379" >> ${{ github.workspace }}/.env
+          echo "--- .env contents ---"
+          cat ${{ github.workspace }}/.env
+          echo "--- .env location ---"
+          ls -la ${{ github.workspace }}
 
       - name: Start production environment
+        working-directory: ${{ github.workspace }}
         run: |
           docker compose --profile prod up -d --build
           echo "Production started on port 8012"
