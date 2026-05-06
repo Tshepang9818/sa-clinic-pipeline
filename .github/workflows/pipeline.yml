@@ -11,6 +11,9 @@ on:
         default: 'NO'
 
 jobs:
+  # ─────────────────────────────────────────
+  # JOB 1 — Run tests on every push
+  # ─────────────────────────────────────────
   test:
     name: Run tests
     runs-on: ubuntu-latest
@@ -32,6 +35,9 @@ jobs:
           cd app
           pytest test_main.py -v
 
+  # ─────────────────────────────────────────
+  # JOB 2 — Build and push Docker image
+  # ─────────────────────────────────────────
   build:
     name: Build and push Docker image
     needs: test
@@ -61,6 +67,9 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/sa-clinic-api:production
 
+  # ─────────────────────────────────────────
+  # JOB 3 — Deploy to staging automatically
+  # ─────────────────────────────────────────
   deploy-staging:
     name: Deploy to staging
     needs: build
@@ -69,19 +78,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose-plugin
+
+      - name: Create .env file
+        run: |
+          cat > .env << 'EOF'
+          POSTGRES_USER=clinicuser
+          POSTGRES_PASSWORD=clinicpass123
+          POSTGRES_DB=clinicdb
+          DATABASE_URL=postgresql://clinicuser:clinicpass123@postgres/clinicdb
+          REDIS_URL=redis://redis:6379
+          EOF
+
       - name: Start staging environment
         run: |
           docker compose --profile staging up -d --build
-          echo "Staging started on port 8003"
+          echo "Staging started on port 8011"
 
       - name: Wait for staging to be ready
-        run: sleep 20
+        run: sleep 30
 
       - name: Run smoke test on staging
         run: |
           chmod +x app/smoke_test.sh
-          ./app/smoke_test.sh http://localhost:8003
+          ./app/smoke_test.sh http://localhost:8011
 
+  # ─────────────────────────────────────────
+  # JOB 4 — Deploy to prod (manual only)
+  # ─────────────────────────────────────────
   deploy-prod:
     name: Deploy to production
     needs: deploy-staging
@@ -91,18 +118,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose-plugin
+
+      - name: Create .env file
+        run: |
+          cat > .env << 'EOF'
+          POSTGRES_USER=clinicuser
+          POSTGRES_PASSWORD=clinicpass123
+          POSTGRES_DB=clinicdb
+          DATABASE_URL=postgresql://clinicuser:clinicpass123@postgres/clinicdb
+          REDIS_URL=redis://redis:6379
+          EOF
+
       - name: Start production environment
         run: |
           docker compose --profile prod up -d --build
-          echo "Production started on port 8004"
+          echo "Production started on port 8012"
 
       - name: Wait for production to be ready
-        run: sleep 20
+        run: sleep 30
 
       - name: Run smoke test on production
         run: |
           chmod +x app/smoke_test.sh
-          ./app/smoke_test.sh http://localhost:8004
+          ./app/smoke_test.sh http://localhost:8012
 
       - name: Confirm production deployment
         run: |
