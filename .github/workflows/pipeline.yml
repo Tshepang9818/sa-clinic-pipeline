@@ -85,13 +85,12 @@ jobs:
 
       - name: Create .env file
         run: |
-          cat > .env << 'EOF'
-          POSTGRES_USER=clinicuser
-          POSTGRES_PASSWORD=clinicpass123
-          POSTGRES_DB=clinicdb
-          DATABASE_URL=postgresql://clinicuser:clinicpass123@postgres/clinicdb
-          REDIS_URL=redis://redis:6379
-          EOF
+          echo "POSTGRES_USER=clinicuser" > .env
+          echo "POSTGRES_PASSWORD=clinicpass123" >> .env
+          echo "POSTGRES_DB=clinicdb" >> .env
+          echo "DATABASE_URL=postgresql://clinicuser:clinicpass123@postgres/clinicdb" >> .env
+          echo "REDIS_URL=redis://redis:6379" >> .env
+          cat .env
 
       - name: Start staging environment
         run: |
