@@ -13,13 +13,38 @@ services:
     ports:
       - "6379:6379"
 
-  app:
+  app-dev:
     build: ./app
     env_file: .env
     depends_on: [postgres, redis]
     ports:
-      - "8002:8000"
+      - "8010:8000"
+    environment:
+      - ENVIRONMENT=development
     restart: on-failure
+    profiles: [dev]
+
+  app-staging:
+    build: ./app
+    env_file: .env
+    depends_on: [postgres, redis]
+    ports:
+      - "8011:8000"
+    environment:
+      - ENVIRONMENT=staging
+    restart: on-failure
+    profiles: [staging]
+
+  app-prod:
+    build: ./app
+    env_file: .env
+    depends_on: [postgres, redis]
+    ports:
+      - "8012:8000"
+    environment:
+      - ENVIRONMENT=production
+    restart: on-failure
+    profiles: [prod]
 
 volumes:
   pgdata:
