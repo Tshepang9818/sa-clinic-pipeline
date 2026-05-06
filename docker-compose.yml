@@ -1,8 +1,10 @@
-
 services:
   postgres:
     image: postgres:15
-    env_file: .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - "5435:5432"
     volumes:
@@ -15,34 +17,37 @@ services:
 
   app-dev:
     build: ./app
-    env_file: .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - ENVIRONMENT=development
     depends_on: [postgres, redis]
     ports:
       - "8010:8000"
-    environment:
-      - ENVIRONMENT=development
     restart: on-failure
     profiles: [dev]
 
   app-staging:
     build: ./app
-    env_file: .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - ENVIRONMENT=staging
     depends_on: [postgres, redis]
     ports:
       - "8011:8000"
-    environment:
-      - ENVIRONMENT=staging
     restart: on-failure
     profiles: [staging]
 
   app-prod:
     build: ./app
-    env_file: .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - ENVIRONMENT=production
     depends_on: [postgres, redis]
     ports:
       - "8012:8000"
-    environment:
-      - ENVIRONMENT=production
     restart: on-failure
     profiles: [prod]
 
