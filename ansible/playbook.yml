@@ -1,0 +1,146 @@
+---
+- name: SA Clinic Pipeline — Server Setup and Deployment
+  hosts: clinic_servers
+  become: yes
+  vars:
+    app_image: "tshepang981/sa-clinic-api"
+    app_tag: "staging"
+    app_port: 8010
+    postgres_user: clinicuser
+    postgres_password: clinicpass123
+    postgres_db: clinicdb
+    database_url: "postgresql://clinicuser:clinicpass123@postgres/clinicdb"
+    redis_url: "redis://redis:6379"
+
+  tasks:
+
+    # ─────────────────────────────────────────
+    # TASK 1 — Verify Docker is available
+    # ─────────────────────────────────────────
+    - name: Check Docker is installed
+      command: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: Print Docker version
+      debug:
+        msg: "Docker version: {{ docker_version.stdout }}"
+
+    # ─────────────────────────────────────────
+    # TASK 2 — Pull latest Docker image
+    # ─────────────────────────────────────────
+    - name: Pull latest clinic API image from Docker Hub
+      community.docker.docker_image:
+        name: "{{ app_image }}"
+        tag: "{{ app_tag }}"
+        source: pull
+        force_source: yes
+      register: image_pull
+
+    - name: Print image pull result
+      debug:
+        msg: "Image pulled: {{ app_image }}:{{ app_tag }}"
+
+    # ─────────────────────────────────────────
+    # TASK 3 — Create Docker network
+    # ─────────────────────────────────────────
+    - name: Create clinic Docker network
+      community.docker.docker_network:
+        name: clinic_network
+        state: present
+
+    # ─────────────────────────────────────────
+    # TASK 4 — Start PostgreSQL container
+    # ─────────────────────────────────────────
+    - name: Start PostgreSQL container
+      community.docker.docker_container:
+        name: clinic_postgres
+        image: postgres:15
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: clinic_network
+        env:
+          POSTGRES_USER: "{{ postgres_user }}"
+          POSTGRES_PASSWORD: "{{ postgres_password }}"
+          POSTGRES_DB: "{{ postgres_db }}"
+        volumes:
+          - clinic_pgdata:/var/lib/postgresql/data
+
+    # ─────────────────────────────────────────
+    # TASK 5 — Start Redis container
+    # ─────────────────────────────────────────
+    - name: Start Redis container
+      community.docker.docker_container:
+        name: clinic_redis
+        image: redis:7-alpine
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: clinic_network
+
+    # ─────────────────────────────────────────
+    # TASK 6 — Wait for PostgreSQL to be ready
+    # ─────────────────────────────────────────
+    - name: Wait for PostgreSQL to accept connections
+      wait_for:
+        timeout: 30
+      delegate_to: localhost
+
+    # ─────────────────────────────────────────
+    # TASK 7 — Deploy clinic API container
+    # ─────────────────────────────────────────
+    - name: Stop existing clinic API container if running
+      community.docker.docker_container:
+        name: clinic_api
+        state: absent
+      ignore_errors: yes
+
+    - name: Start clinic API container
+      community.docker.docker_container:
+        name: clinic_api
+        image: "{{ app_image }}:{{ app_tag }}"
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: clinic_network
+        ports:
+          - "{{ app_port }}:8000"
+        env:
+          DATABASE_URL: "{{ database_url }}"
+          REDIS_URL: "{{ redis_url }}"
+          ENVIRONMENT: "ansible_deployed"
+
+    # ─────────────────────────────────────────
+    # TASK 8 — Health check
+    # ─────────────────────────────────────────
+    - name: Wait for API to start
+      wait_for:
+        port: "{{ app_port }}"
+        host: localhost
+        timeout: 120
+
+    - name: Run health check
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+      register: health_check
+      retries: 10
+      delay: 15
+      until: health_check.status == 200
+
+    - name: Print health check result
+      debug:
+        msg: "Health check passed — API is healthy at http://localhost:{{ app_port }}/health"
+
+    # ─────────────────────────────────────────
+    # TASK 9 — Print deployment summary
+    # ─────────────────────────────────────────
+    - name: Deployment summary
+      debug:
+        msg:
+          - "Deployment complete!"
+          - "Image: {{ app_image }}:{{ app_tag }}"
+          - "API running at: http://localhost:{{ app_port }}"
+          - "Environment: ansible_deployed"
