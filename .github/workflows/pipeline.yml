@@ -69,10 +69,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Docker Compose
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-compose-plugin
 
       - name: Export environment variables
         run: |
@@ -103,11 +99,6 @@ jobs:
     if: github.event.inputs.deploy_to_prod == 'YES'
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Docker Compose
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-compose-plugin
 
       - name: Export environment variables
         run: |
