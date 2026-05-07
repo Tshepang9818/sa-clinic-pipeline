@@ -1,10 +1,7 @@
 services:
   postgres:
     image: postgres:15
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+    env_file: .env
     ports:
       - "5435:5432"
     volumes:
@@ -17,39 +14,52 @@ services:
 
   app-dev:
     build: ./app
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - ENVIRONMENT=development
+    env_file: .env
     depends_on: [postgres, redis]
     ports:
       - "8010:8000"
+    environment:
+      - ENVIRONMENT=development
     restart: on-failure
     profiles: [dev]
 
   app-staging:
     build: ./app
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - ENVIRONMENT=staging
+    env_file: .env
     depends_on: [postgres, redis]
     ports:
       - "8011:8000"
+    environment:
+      - ENVIRONMENT=staging
     restart: on-failure
     profiles: [staging]
 
   app-prod:
     build: ./app
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - ENVIRONMENT=production
+    env_file: .env
     depends_on: [postgres, redis]
     ports:
       - "8012:8000"
+    environment:
+      - ENVIRONMENT=production
     restart: on-failure
     profiles: [prod]
+  prometheus:
+    build: ./monitoring/prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:10.3.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on: [prometheus]
+
 
 volumes:
   pgdata:
+  grafana_data:
